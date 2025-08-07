@@ -5,6 +5,14 @@ from folder_paths import get_full_path, get_folder_paths, models_dir
 import os
 import torch.nn.functional as F
 
+class AnyType(str):
+  """A special class that is always equal in not equal comparisons. Credit to pythongosssss"""
+
+  def __ne__(self, __value: object) -> bool:
+    return False
+
+any = AnyType("*")
+
 def split_tensor_into_batches(tensor, batch_size):
     """
     Split a tensor into smaller batches of specified size
@@ -51,6 +59,9 @@ class LoadInvSRModels:
                 "dtype": (['fp16', 'fp32', 'bf16'], {"default": "fp16"}),
                 "tiled_vae": ("BOOLEAN", {"default": True}),
             },
+            "optional": {
+                "connect": (any,),
+            }
         }
 
     RETURN_TYPES = ("INVSR_PIPE",)
@@ -58,7 +69,7 @@ class LoadInvSRModels:
     FUNCTION = "loadmodel"
     CATEGORY = "INVSR"
 
-    def loadmodel(self, sd_model, invsr_model, dtype, tiled_vae):
+    def loadmodel(self, sd_model, invsr_model, dtype, tiled_vae, connect = None):
         match dtype:
             case "fp16":
                 dtype = "torch.float16"
