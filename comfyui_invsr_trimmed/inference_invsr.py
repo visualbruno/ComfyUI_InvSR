@@ -67,7 +67,7 @@ def get_configs(args, log=False):
 
     if not Path(started_ckpt_path).exists():
         temp_path = hf_hub_download(
-            repo_id="OAOA/InvSR",
+            repo_id="visualbruno/InvSR",
             filename=started_ckpt_name,
         )
         copy2(temp_path, started_ckpt_path)
@@ -81,5 +81,13 @@ def get_configs(args, log=False):
         configs.basesr.chopping.extra_bs = 1
     else:
         configs.basesr.chopping.extra_bs = args.chopping_bs
+
+    # Empress Zoia patches settings
+    configs.empress_zoia.enable = True
+    configs.empress_zoia.patch_size = 256
+    configs.empress_zoia.patch_overlap = 32
+    configs.empress_zoia.patch_weight_type = 'linear'
+    configs.empress_zoia.patch_guidance_scale = 1.5
+    configs.empress_zoia.patch_timesteps = [200, 150, 100, 50]
 
     return configs

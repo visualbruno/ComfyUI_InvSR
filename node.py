@@ -1,6 +1,7 @@
 from .comfyui_invsr_trimmed import get_configs, InvSamplerSR, BaseSampler, Namespace
 import torch
 from comfy.utils import ProgressBar
+import comfy.model_management as mm
 from folder_paths import get_full_path, get_folder_paths, models_dir
 import os
 import torch.nn.functional as F
@@ -122,6 +123,7 @@ class InvSRSampler:
                 "chopping_size": ([128, 256, 512],{"default": 128}),
                 "color_fix": (['none', 'wavelet', 'ycbcr'], {"default": "none"}),
                 "seed": ("INT", {"default": 123, "min": 0, "max": 2**32 - 1, "step": 1}),
+                "keep_model_loaded": ("BOOLEAN",{"default":False}),
             },
         }
 
@@ -130,7 +132,7 @@ class InvSRSampler:
     FUNCTION = "process"
     CATEGORY = "INVSR"
 
-    def process(self, invsr_pipe, images, num_steps, cfg, batch_size, chopping_batch_size, chopping_size, color_fix, seed):
+    def process(self, invsr_pipe, images, num_steps, cfg, batch_size, chopping_batch_size, chopping_size, color_fix, seed, keep_model_loaded):
         base_sampler, invsr_model = invsr_pipe
         if color_fix == "none":
             color_fix = ""
@@ -164,6 +166,11 @@ class InvSRSampler:
         
         base_sampler.configs = configs
         base_sampler.setup_seed(seed)
+
+        # the pipe may have been offloaded by a previous run with keep_model_loaded disabled
+        device = mm.get_torch_device()
+        base_sampler.sd_pipe.to(device)
+        base_sampler.sd_pipe.start_noise_predictor.to(device)
         sampler = InvSamplerSR(base_sampler)
 
         images_bchw = images.permute(0,3,1,2)
@@ -188,6 +195,12 @@ class InvSRSampler:
             result = sampler.inference(image_bchw=batch)
             results.append(torch.from_numpy(result))
             pbar.update(1)
+            
+        if not keep_model_loaded:
+            offload_device = mm.unet_offload_device()
+            base_sampler.sd_pipe.to(offload_device)
+            base_sampler.sd_pipe.start_noise_predictor.to(offload_device)
+            mm.soft_empty_cache()
 
         result_t = torch.cat(results, dim=0)
 
