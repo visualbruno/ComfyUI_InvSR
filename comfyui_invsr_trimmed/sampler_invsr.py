@@ -75,7 +75,7 @@ class BaseSampler:
             )
             self.write_log('Loaded Done')
         if self.configs.base_model in ['sd-turbo', 'sd2base'] :
-            sd_pipe = StableDiffusionInvEnhancePipeline.from_pipe(base_pipe)
+            sd_pipe = StableDiffusionInvEnhancePipeline.from_pipe(base_pipe, torch_dtype=params['torch_dtype'])
         else:
             raise ValueError(f"Unsupported base model: {self.configs.base_model}!")
         sd_pipe.to(DEVICE)
